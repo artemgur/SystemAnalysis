@@ -1,0 +1,17 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+cryptography = "*"
+jsonpickle = "*"
+jupyter = "*"
+requests = "*"
+pycryptodome = "*"
+python-dateutil = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.10"

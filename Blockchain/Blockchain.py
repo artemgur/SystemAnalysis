@@ -5,13 +5,14 @@ from Block import Block
 import utilities
 
 class Blockchain:
-    def __init__(self, block_list: list[Block], filename: str):
+    def __init__(self, block_list: list[Block], filename: str, block_type: type):
         self.__block_list = block_list
         self.__filename = filename
+        self.__block_type = block_type
 
     @classmethod
     def create(cls, filename: str):
-        return cls([],  filename)
+        return cls([],  filename, Block)
 
     @classmethod
     def load_from_file(cls, filename: str):
@@ -28,9 +29,9 @@ class Blockchain:
 
     def add_block(self, block_data: str, signature_private_key: RSAPrivateKey):
         if len(self.__block_list) == 0:
-            self.__block_list.append(Block(block_data, signature_private_key, None))
+            self.__block_list.append(self.__block_type(block_data, signature_private_key, None))
         else:
-            self.__block_list.append(Block(block_data, signature_private_key, self.__block_list[-1]))
+            self.__block_list.append(self.__block_type(block_data, signature_private_key, self.__block_list[-1]))
         with open(self.__filename, 'a') as file:
             file.write(jsonpickle.encode(self.__block_list[-1]))
             file.write('\n')

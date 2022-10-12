@@ -14,13 +14,13 @@ class Block:
         self.__block_number = previous_block.block_number + 1 if previous_block is not None else 0
         self.__previous_hash = previous_block.hash() if previous_block is not None else None
         self.__data_signature = self.__sign_data(signature_private_key)
-        self.__block_signature = self.__sign_block(signature_private_key)
+        self._block_signature = self._sign_block(signature_private_key)
 
     def info(self):
         return f'Data: {self.__data.decode(constants.encoding)}\n' f'Block number: {self.__block_number}\n'\
                f'Previous hash: {binascii.hexlify(self.__previous_hash).decode("utf-8")}\n'\
                f'Data signature: {binascii.hexlify(self.__data_signature).decode("utf-8")}\n'\
-               f'Block signature: {binascii.hexlify(self.__block_signature).decode("utf-8")}\n'
+               f'Block signature: {binascii.hexlify(self._block_signature).decode("utf-8")}\n'
 
     @property
     def data(self):
@@ -32,7 +32,7 @@ class Block:
 
     @property
     def block_signature(self):
-        return self.__block_signature
+        return self._block_signature
 
     @property
     def block_number(self):
@@ -43,19 +43,23 @@ class Block:
         return self.__previous_hash
 
     def hash(self):
-        data_to_hash = self.__previous_hash + b'\n' if self.__previous_hash is not None else b''
-        data_to_hash += self.__data
-        data_to_hash += self.__data_signature
+        data_to_hash = self._data_to_hash()
         hasher = hashes.Hash(constants.hash_function)
         hasher.update(data_to_hash)
         return hasher.finalize()
+
+    def _data_to_hash(self):
+        data_to_hash = self.__previous_hash + b'\n' if self.__previous_hash is not None else b''
+        data_to_hash += self.__data
+        data_to_hash += self.__data_signature
+        return data_to_hash
 
     def __sign_data(self, private_key: RSAPrivateKey):
         return private_key.sign(self.__data,
                 padding.PSS(mgf = padding.MGF1(constants.hash_function),salt_length = padding.PSS.MAX_LENGTH),
                 constants.hash_function)
 
-    def __sign_block(self, private_key: RSAPrivateKey):
+    def _sign_block(self, private_key: RSAPrivateKey):
         return private_key.sign(self.hash(),
                 padding.PSS(mgf = padding.MGF1(constants.hash_function),salt_length = padding.PSS.MAX_LENGTH),
                 utils.Prehashed(constants.hash_function))
@@ -71,9 +75,9 @@ class Block:
 
     def verify_block_signature(self, public_key: RSAPublicKey):
         try:
-            public_key.verify(self.__block_signature, self.hash(),
-                padding.PSS(mgf=padding.MGF1(constants.hash_function), salt_length=padding.PSS.MAX_LENGTH),
-                utils.Prehashed(constants.hash_function))
+            public_key.verify(self._block_signature, self.hash(),
+                              padding.PSS(mgf=padding.MGF1(constants.hash_function), salt_length=padding.PSS.MAX_LENGTH),
+                              utils.Prehashed(constants.hash_function))
         except InvalidSignature:
             return False
         return True
