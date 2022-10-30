@@ -6,9 +6,17 @@ import binascii
 import rsa
 
 
-def get_last_data_str(json_str: str):
+def substr_nth_occurrence_from_end(string: str, substr: str, n: int):
+    end_index = len(string)
+    for i in range(0, n, -1):
+        end_index = string.rfind(substr, 0, end_index)
+    return end_index
+
+
+def get_nth_last_data_str(json_str: str, n: int):
     data_str = '"data":'
-    last_data_start_index = json_str.rfind(data_str) + len(data_str)
+    #last_data_start_index = json_str.rfind(data_str) + len(data_str)
+    last_data_start_index = substr_nth_occurrence_from_end(json_str, data_str, n) + len(data_str)
     last_data_end_index = json_str.find('}', last_data_start_index) + 1
     print('last data: ', json_str[last_data_start_index:last_data_end_index], '\n')
     return json_str[last_data_start_index:last_data_end_index]
@@ -18,7 +26,7 @@ def get_block(block_index):
     response_json_str = requests.get('http://89.108.115.118/nbc/chain').text
     response_json = json.loads(response_json_str)
     last_block = response_json[block_index]
-    last_block['data'] = get_last_data_str(response_json_str)
+    last_block['data'] = get_nth_last_data_str(response_json_str, block_index)
     return last_block
 
 
@@ -28,7 +36,7 @@ def get_last_block():
 
 def get_block_hash(block_index):
     last_block = get_block(block_index)
-    data_to_hash = binascii.unhexlify(last_block['prevhash']) + last_block['data'].encode('utf-8') + last_block['ts'].encode('utf-8')# + binascii.unhexlify(last_block['signature'])
+    data_to_hash = binascii.unhexlify(last_block['prevhash']) + last_block['data'].encode('utf-8') + binascii.unhexlify(last_block['signature'])
     hasher = hashlib.sha256()
     hasher.update(data_to_hash)
     return hasher.hexdigest()

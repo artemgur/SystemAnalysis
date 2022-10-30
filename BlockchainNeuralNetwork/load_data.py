@@ -9,4 +9,4 @@ def load_data(filename: str):
                     .map(lambda a: list(Seq(a.split(';')).map(lambda b: float(b)))))
     x = np.array(list(Seq(data).map(lambda a: a[:2])))
     y = np.array(list(Seq(data).map(lambda a: a[-1:])))
-    return torch.from_numpy(x).float(), torch.from_numpy(y).float()
+    return torch.from_numpy(x).to(torch.double), torch.from_numpy(y).to(torch.double)

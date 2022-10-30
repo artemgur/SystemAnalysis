@@ -8,15 +8,19 @@ from torch.utils.data import DataLoader
 #learning_rate = 0.5
 
 
-def train(x, y, n_epochs=10000, learning_rate=0.5):
-    neural_network = nn.Sequential(
+def create_neural_network():
+    return nn.Sequential(
         nn.Linear(2, 2, bias=False),
         nn.Sigmoid(),
         nn.Linear(2, 3, bias=False),
         nn.Sigmoid(),
         nn.Linear(3, 1, bias=False),
         nn.Sigmoid()
-    )
+    ).to(torch.double)
+
+
+def train(x, y, n_epochs=10000, learning_rate=0.5):
+    neural_network = create_neural_network()
 
     loss_fn = nn.MSELoss(reduction='sum')
     optimizer = optim.SGD(neural_network.parameters(), lr=learning_rate)
@@ -34,6 +38,18 @@ def train(x, y, n_epochs=10000, learning_rate=0.5):
 
         scheduler.step(loss)
     with torch.no_grad():
+        neural_network.eval()
+
+        prediction = neural_network(x)
+        loss = loss_fn(y, prediction)
+        return loss.item(), list(map(lambda a: a.detach().numpy(), neural_network.parameters()))
+
+def calculate_loss_for_weights(x, y, **kwargs):
+    neural_network = create_neural_network()
+    loss_fn = nn.MSELoss(reduction='sum')
+    with torch.no_grad():
+        for i in [0, 2, 4]:
+            neural_network[i].weight = nn.Parameter(torch.ones_like(neural_network[i].weight) * 0.1)
         neural_network.eval()
 
         prediction = neural_network(x)

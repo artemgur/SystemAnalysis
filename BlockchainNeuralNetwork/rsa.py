@@ -36,6 +36,10 @@ def public_key_hex():
     return binascii.hexlify(public_key().export_key('DER', pkcs=8)).decode('utf-8')
 
 
+def private_key_hex():
+    return binascii.hexlify(private_key().export_key('DER', pkcs=8)).decode('utf-8')
+
+
 def sign(text_to_sign: str):
     hasher = SHA256.new()
     signer = pkcs1_15.new(private_key())
