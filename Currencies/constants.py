@@ -1,0 +1,1 @@
+currencies = ['CNY', 'SGD', 'IDR', 'INR']#, 'RUB']
