@@ -19,7 +19,7 @@ class Basket:
         #buy_prices_arr = np.array(buy_prices)
         #sell_prices_arr = np.array(sell_prices)
 
-        price_ratio = (sell_prices - buy_prices) / buy_prices
+        price_ratio = sell_prices / buy_prices
         new_prices = self._basket_values * price_ratio
         return (new_prices - self._basket_values).sum()
 
