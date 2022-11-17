@@ -25,7 +25,7 @@ class Basket:
 
     # currency_prices: строки – дни, столбцы – валюты
     def calculate_risk(self, currency_prices: np.ndarray):
-        basket_prices: np.ndarray = (currency_prices * self._basket_ratio).sum(axis=0)
+        basket_prices: np.ndarray = (currency_prices * self._basket_ratio).sum(axis=1)
         return basket_prices.var()
 
 

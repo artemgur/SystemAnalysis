@@ -6,6 +6,8 @@ from expression.collections import Seq
 import load_data
 from basket import get_baskets, Basket
 import constants
+from utilities import seq_to_numpy
+import criterions
 
 
 _week_length = 6
@@ -13,25 +15,17 @@ _week_length = 6
 
 def strategy_state(strategy_number, profit, most_risky_number):
     if strategy_number == most_risky_number:
-        if profit >= constants.a: # TODO check where equality should be
+        if profit >= constants.a:
             return 0
         return 1
-    if profit >= constants.a: # TODO check where equality should be
+    if profit >= constants.a:
         return 2
     return 3
-
 
 
 def label_weeks(data: pd.DataFrame):
     data['week'] = data.apply(lambda x: int(x.name) // _week_length, axis=1)
     return data
-
-def temp_f(week, x):
-    #try:
-    a = np.column_stack(x)
-    #except:
-    #    print(week, x)
-    return a
 
 
 def calculate_profit_dispersion(dfs: list[pd.DataFrame], baskets: list[Basket]):
@@ -39,24 +33,21 @@ def calculate_profit_dispersion(dfs: list[pd.DataFrame], baskets: list[Basket]):
     profits_matrix = np.zeros((4, 4))
     counts_matrix = np.zeros((4, 4))
     for week in data_weeks[0].index:
-        profits = np.array(
+        profits = seq_to_numpy(
             Seq(baskets).map(lambda x: x.calculate_profit(
-                np.array(Seq(data_weeks).map(lambda y: y.loc[week, '<OPEN>']).to_list()),
-                np.array(Seq(data_weeks).map(lambda y: y.loc[week, '<CLOSE>']).to_list())
-            )).to_list()
+                seq_to_numpy(Seq(data_weeks).map(lambda y: y.loc[week, '<OPEN>'])),
+                seq_to_numpy(Seq(data_weeks).map(lambda y: y.loc[week, '<CLOSE>']))
+            ))
         )
-        #profits_sum += profits
 
-        most_risky = np.array(Seq(baskets)
-                              .map(lambda x: x.calculate_risk(temp_f(week, Seq(dfs)
-                              .map(lambda y: y.query(f'week == {week}')['<CLOSE>'].to_numpy()).to_list()))).to_list())\
+        most_risky = seq_to_numpy(Seq(baskets)
+                              .map(lambda x: x.calculate_risk(np.column_stack(Seq(dfs)
+                              .map(lambda y: y.query(f'week == {week}')['<CLOSE>'].to_numpy()).to_list()))))\
                               .argmax()
-        print(most_risky)
+        if profits[most_risky] > 0:
+            profits[most_risky] *= 0.3
 
         strategy_state_points = Seq(profits).mapi(lambda i, x: (i, strategy_state(i, x, most_risky)))
-
-        #result_profits_matrix = np.zeros((4, 4))
-        #result_counts_matrix = np.zeros((4, 4))
 
         for point in strategy_state_points:
             profits_matrix[point[0], point[1]] += profits[point[0]]
@@ -64,32 +55,36 @@ def calculate_profit_dispersion(dfs: list[pd.DataFrame], baskets: list[Basket]):
 
     # Needed to avoid division by 0 errors. Source: https://stackoverflow.com/questions/26248654/how-to-return-0-with-divide-by-zero
     avg_profits_matrix = np.divide(profits_matrix, counts_matrix, out=np.zeros_like(profits_matrix), where=counts_matrix != 0)
-    total_count = counts_matrix.sum(axis=1) # TODO check axis
-    probabilities_matrix = counts_matrix / total_count[:, None] # TODO check shape broadcast
+    total_count = counts_matrix.sum(axis=1)
+    probabilities_matrix = counts_matrix / total_count[:, None]
     return avg_profits_matrix, probabilities_matrix
 
 
 def handle_missing_days(dfs: list[pd.DataFrame]):
     dfs = list(Seq(dfs).map(lambda x: x.set_index('<DATE>')))
-    for x in range(len(dfs)):
-        for y in range(x + 1, len(dfs)):
-            dfs[x], dfs[y] = dfs[x].align(dfs[y], axis=0)
+    for i in range(len(dfs)):
+        for j in range(i + 1, len(dfs)):
+            dfs[i], dfs[j] = dfs[i].align(dfs[j], axis=0)
     return Seq(dfs).map(lambda x: x.fillna(method='ffill'))
 
 
-def run():
+# noinspection SpellCheckingInspection
+def calculate_matrixes():
     dfs = list(load_data.load())
     dfs = list(handle_missing_days(dfs).map(label_weeks))
-    for df in dfs:
-        print(df.shape)
-    #     print('––––––––––––––––––––––––––––––––––––––––')
-    # for x in dfs[0]['<OPEN>'].index:
-    #     print(x)
     baskets = list(get_baskets())
     avg_profits_matrix, probabilities_matrix = calculate_profit_dispersion(dfs, baskets)
-    print(avg_profits_matrix)
-    print('–––––––––––––––––––––––––––––––––––––––––––––––––––––')
-    print(probabilities_matrix)
+    return avg_profits_matrix, probabilities_matrix
+
+
+def calculate_best_strategies(avg_profits_matrix, probabilities_matrix):
+    best_strategies = [criterions.maximin(avg_profits_matrix), criterions.maximax(avg_profits_matrix),
+                       criterions.hurwicz(avg_profits_matrix, 0.25), criterions.hurwicz(avg_profits_matrix, 0.5),
+                       criterions.hurwicz(avg_profits_matrix, 0.75), criterions.savage(avg_profits_matrix),
+                       criterions.bayes(avg_profits_matrix, probabilities_matrix)]
+    return best_strategies
+
+
 
 
 
